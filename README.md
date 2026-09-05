@@ -45,6 +45,17 @@ graph TD
     class LlamaCPP,Qwen,Audio,Jina model;
 ```
 
+### Component Breakdown
+
+* **Public Gateway (FastAPI):** The public-facing entry point. It handles API key authentication, request sanitization, and SSE (Server-Sent Events) response streaming.
+* **LiteLLM Router:** Standardizes all requests. It routes standard OpenAI-compatible calls to either the lightweight text embedding service or the heavy Swap Manager.
+* **Swap Manager:** The core VRAM dispatcher. It monitors available GPU memory, dynamically starts heavy model backends on demand, and gracefully shuts them down when idle.
+* **Model Backends:**
+    * *LlamaCPP:* Runs the Qwen3 text embedding model continuously.
+    * *Qwen-VL:* Spun up dynamically for multimodal vision tasks.
+    * *Audio:* Custom pipelines for GigaAM transcription and Pyannote diarization.
+    * *Jina CLIP:* Pre-warmed image embedding model kept in memory for high-priority tasks.
+
 ## **✨ Key Features**
 
 > * **Multi-Modal Support out-of-the-box:** \
