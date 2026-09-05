@@ -1,0 +1,55 @@
+model_list:
+  - model_name: text-embedding
+    litellm_params:
+      model: openai/qwen3-embedding
+      api_base: http://embeddings_proxy:8005/v1
+      api_key: local
+    model_info:
+      mode: embedding
+
+  - model_name: image-embedding
+    litellm_params:
+      model: openai/jina-clip-v2
+      api_base: http://swap_manager:9000/v1
+      api_key: local
+    model_info:
+      mode: embedding
+
+  - model_name: qwen-vl
+    litellm_params:
+      model: openai/qwen2.5-vl
+      api_base: http://swap_manager:9000/v1
+      api_key: local
+    model_info:
+      mode: chat
+
+  - model_name: qwen3-vl
+    litellm_params:
+      model: openai/qwen3-vl
+      api_base: http://swap_manager:9000/v1
+      api_key: local
+    model_info:
+      mode: chat
+
+  - model_name: query-router
+    litellm_params:
+      model: openai/query-router
+      api_base: http://swap_manager:9000/v1
+      api_key: local
+    model_info:
+      mode: chat
+
+  - model_name: gigaam
+    litellm_params:
+      model: openai/gigaam
+      api_base: http://swap_manager:9000/v1
+      api_key: local
+    model_info:
+      mode: audio_transcription
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false

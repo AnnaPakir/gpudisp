@@ -1,0 +1,182 @@
+name: gpudisp
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    restart: unless-stopped
+    depends_on:
+      - embeddings_proxy
+      - embeddings_text
+      - swap_manager
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      STORE_MODEL_IN_DB: "False"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    command:
+      - "--config"
+      - "/app/config.yaml"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "4000"
+    networks:
+      - gpudisp-internal
+
+  public_gateway:
+    image: gpudisp/swap-manager:local
+    restart: unless-stopped
+    depends_on:
+      - litellm
+      - swap_manager
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LITELLM_BASE_URL: http://litellm:4000
+      SWAP_MANAGER_BASE_URL: http://swap_manager:9000
+      PUBLIC_GATEWAY_TIMEOUT_SEC: ${PUBLIC_GATEWAY_TIMEOUT_SEC:-1200}
+    volumes:
+      - ./scripts:/scripts:ro
+    command:
+      - "python3"
+      - "/scripts/run_public_gateway.py"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "4010"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:4010/internal/health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-net"
+      - "traefik.http.routers.gpudisp.rule=Host(`${GPUDISP_DOMAIN:-gpudisp.ru}`)"
+      - "traefik.http.routers.gpudisp.entrypoints=websecure"
+      - "traefik.http.routers.gpudisp.tls=true"
+      - "traefik.http.services.gpudisp.loadbalancer.server.port=4010"
+    networks:
+      - gpudisp-internal
+      - traefik-net
+
+  embeddings_text:
+    image: ghcr.io/ggml-org/llama.cpp:server-cuda
+    restart: unless-stopped
+    command:
+      - "-m"
+      - "/models/${TEXT_EMBEDDING_GGUF}"
+      - "--embedding"
+      - "--pooling"
+      - "${TEXT_EMBEDDING_POOLING:-mean}"
+      - "--ctx-size"
+      - "${TEXT_EMBEDDING_CTX_SIZE:-8192}"
+      - "--batch-size"
+      - "${TEXT_EMBEDDING_BATCH_SIZE:-8192}"
+      - "--ubatch-size"
+      - "${TEXT_EMBEDDING_UBATCH_SIZE:-8192}"
+      - "--parallel"
+      - "${TEXT_EMBEDDING_PARALLEL:-1}"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8001"
+      - "--n-gpu-layers"
+      - "${TEXT_EMBEDDING_GPU_LAYERS:-99}"
+    volumes:
+      - ./models:/models:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/8001'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - gpudisp-internal
+
+  embeddings_proxy:
+    image: gpudisp/swap-manager:local
+    restart: unless-stopped
+    depends_on:
+      - embeddings_text
+    volumes:
+      - ./scripts:/scripts:ro
+    command:
+      - "python3"
+      - "/scripts/run_embedding_proxy.py"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8005"
+      - "--target"
+      - "http://embeddings_text:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8005/health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - gpudisp-internal
+
+  swap_manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.swap-manager
+      args:
+        LLAMA_CPP_IMAGE: ${LLAMA_CPP_IMAGE:-ghcr.io/ggml-org/llama.cpp:server-cuda}
+        TORCH_INDEX_URL: ${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}
+        TORCH_VERSION: ${TORCH_VERSION:-2.10.0}
+        TORCHVISION_VERSION: ${TORCHVISION_VERSION:-0.25.0}
+        TORCHAUDIO_VERSION: ${TORCHAUDIO_VERSION:-2.10.0}
+    image: gpudisp/swap-manager:local
+    restart: unless-stopped
+    environment:
+      HF_HOME: /models/.cache/huggingface
+      HF_TOKEN: ${HF_TOKEN:-}
+      TORCH_HOME: /models/.cache/torch
+      XDG_CACHE_HOME: /models/.cache
+      GIGAAM_MODEL_NAME: ${GIGAAM_MODEL_NAME:-v3_e2e_rnnt}
+      SPEAKER_EMBEDDING_MODEL_ID: ${SPEAKER_EMBEDDING_MODEL_ID:-speechbrain/spkrec-ecapa-voxceleb}
+      GENDER_MODEL_ID: ${GENDER_MODEL_ID:-alefiury/wav2vec2-large-xlsr-53-gender-recognition-librispeech}
+      PYANNOTE_MODEL_ID: ${PYANNOTE_MODEL_ID:-pyannote/speaker-diarization-community-1}
+      DIARIZATION_BACKEND: ${DIARIZATION_BACKEND:-simple}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ./models:/models
+      - ./scripts:/scripts:ro
+      - ./swap_config.yaml:/app/config.yaml:ro
+    command:
+      - "python3"
+      - "/app/swap_manager.py"
+      - "--config"
+      - "/app/config.yaml"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - gpudisp-internal
+
+networks:
+  gpudisp-internal:
+    name: gpudisp-internal
+  traefik-net:
+    external: true

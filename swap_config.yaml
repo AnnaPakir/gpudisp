@@ -1,0 +1,151 @@
+manager:
+  host: 0.0.0.0
+  port: 9000
+  backend_host: 127.0.0.1
+  backend_base_port: 9100
+  startup_timeout_sec: 240
+  request_timeout_sec: 900
+  idle_check_interval_sec: 5
+  prewarm_check_interval_sec: 10
+  vram_guard_mb: 768
+
+models:
+  jina-clip-v2:
+    aliases:
+      - image-embedding
+      - openai/image-embedding
+      - openai/jina-clip-v2
+    endpoints:
+      - /v1/embeddings
+    estimated_vram_mb: 1800
+    priority: high
+    pre_warm: true
+    idle_timeout_sec: 0
+    startup_timeout_sec: 360
+    request_timeout_sec: 180
+    health_path: /health
+    cmd: >
+      python3 /scripts/run_jinaclip.py
+      --host ${HOST}
+      --port ${PORT}
+      --model-id jinaai/jina-clip-v2
+      --device cuda
+      --truncate-dim 512
+
+  qwen2.5-vl:
+    aliases:
+      - qwen-vl
+      - openai/qwen-vl
+      - openai/qwen2.5-vl
+    endpoints:
+      - /v1/chat/completions
+      - /v1/completions
+    estimated_vram_mb: 7000
+    priority: low
+    pre_warm: false
+    idle_timeout_sec: 60
+    startup_timeout_sec: 360
+    request_timeout_sec: 900
+    health_path: /health
+    cmd: >
+      /app/llama-server
+      --model /models/Qwen2.5-VL-7B-Instruct-Q4_K_M.gguf
+      --mmproj /models/mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf
+      --host ${HOST}
+      --port ${PORT}
+      --ctx-size 4096
+      --n-gpu-layers 99
+
+  qwen3-vl:
+    aliases:
+      - qwen3-vl
+      - openai/qwen3-vl
+      - openai/qwen3-vl-8b
+    endpoints:
+      - /v1/chat/completions
+      - /v1/completions
+    estimated_vram_mb: 7800
+    priority: low
+    pre_warm: false
+    idle_timeout_sec: 60
+    startup_timeout_sec: 420
+    request_timeout_sec: 900
+    health_path: /health
+    cmd: >
+      /app/llama-server
+      --model /models/Qwen3VL-8B-Instruct-Q4_K_M.gguf
+      --mmproj /models/mmproj-Qwen3VL-8B-Instruct-Q8_0.gguf
+      --host ${HOST}
+      --port ${PORT}
+      --ctx-size 4096
+      --n-gpu-layers 99
+
+  qwen3-router:
+    aliases:
+      - query-router
+      - openai/query-router
+      - openai/qwen3-router
+    endpoints:
+      - /v1/chat/completions
+      - /v1/completions
+    estimated_vram_mb: 5600
+    priority: low
+    pre_warm: false
+    idle_timeout_sec: 300
+    startup_timeout_sec: 300
+    request_timeout_sec: 60
+    health_path: /health
+    cmd: >
+      /app/llama-server
+      --model /models/Qwen3-8B-Instruct-Q4_K_M.gguf
+      --host ${HOST}
+      --port ${PORT}
+      --ctx-size 4096
+      --n-gpu-layers 99
+
+  gigaam:
+    aliases:
+      - openai/gigaam
+    endpoints:
+      - /v1/audio/transcriptions
+    estimated_vram_mb: 2500
+    priority: low
+    pre_warm: false
+    idle_timeout_sec: 30
+    startup_timeout_sec: 240
+    request_timeout_sec: 900
+    health_path: /health
+    cmd: >
+      python3 /scripts/run_gigaam.py
+      --host ${HOST}
+      --port ${PORT}
+      --model-name ${GIGAAM_MODEL_NAME}
+      --device cuda
+
+  audio-analysis:
+    aliases:
+      - speaker-embedding
+      - speaker-embeddings
+      - gender
+      - diarization
+      - openai/audio-analysis
+    endpoints:
+      - /v1/audio/speaker-embeddings
+      - /v1/audio/gender
+      - /v1/audio/diarization
+    estimated_vram_mb: 5200
+    priority: low
+    pre_warm: false
+    idle_timeout_sec: 60
+    startup_timeout_sec: 360
+    request_timeout_sec: 900
+    health_path: /health
+    cmd: >
+      python3 /scripts/run_audio_analysis.py
+      --host ${HOST}
+      --port ${PORT}
+      --speaker-model-id ${SPEAKER_EMBEDDING_MODEL_ID}
+      --gender-model-id ${GENDER_MODEL_ID}
+      --pyannote-model-id ${PYANNOTE_MODEL_ID}
+      --diarization-backend ${DIARIZATION_BACKEND}
+      --device cuda
