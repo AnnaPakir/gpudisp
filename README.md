@@ -10,7 +10,8 @@ It acts as a dynamic swap manager, intelligently loading and unloading models fr
 
 The heart of the project is the custom swap\_manager. Since a single 16GB GPU cannot hold all models simultaneously, the manager acts as a traffic controller for VRAM:
 
-> * **Priority-Based Swapping:** \* **High Priority (Pre-warmed):** Lightweight or frequently used models (e.g., jina-clip-v2 for embeddings) are loaded on startup and never unloaded due to idle time.  
+> * **Priority-Based Swapping:**
+> * **High Priority (Pre-warmed):** Lightweight or frequently used models (e.g., jina-clip-v2 for embeddings) are loaded on startup and never unloaded due to idle time.  
 >  * **Low Priority (On-Demand):** Heavy models (e.g., Qwen2.5-VL, GigaAM) are loaded when a request arrives. If they remain idle for a configured idle\_timeout\_sec (e.g., 60 seconds), they are automatically unloaded from VRAM.  
 > * **VRAM Guard:** Before spinning up a new model, the manager checks the currently available VRAM against the model's estimated\_vram\_mb. If there isn't enough memory, it forcefully suspends inactive low-priority models to make room.  
 > * **Zero-Downtime Routing:** Client requests wait seamlessly while the requested model is spun up into VRAM, completely abstracting the hardware limitations from the end user.
@@ -46,7 +47,8 @@ graph TD
 
 ## **✨ Key Features**
 
-> * **Multi-Modal Support out-of-the-box:** \* *Vision LLMs:* Qwen2.5-VL, Qwen3-VL (GGUF via llama.cpp)  
+> * **Multi-Modal Support out-of-the-box:** \
+  * *Vision LLMs:* Qwen2.5-VL, Qwen3-VL (GGUF via llama.cpp)  
   * *Audio Analysis:* GigaAM (transcription), Pyannote/SpeechBrain (diarization, speaker embeddings, gender classification)  
   * *Embeddings:* Qwen3 (text), Jina CLIP v2 (images)  
 > * **OpenAI-Compatible API:** Wraps multiple disparate backends into standard /v1/chat/completions and /v1/embeddings endpoints using LiteLLM.  
