@@ -1,20 +1,22 @@
-# **GPU Dispatcher (gpudisp) 🚀**
+# gpudisp: VRAM Swap Manager & API Gateway 🚀
 
-**Коротко о проекте (RU):**  
-gpudisp — это MLOps-инструмент для оркестрации и запуска зоопарка нейросетей (LLMs, Vision, Audio, Embeddings) на одной потребительской видеокарте (например, 16 ГБ VRAM).**Главная особенонсть — умный диспетчер памяти (Swap Manager).** Он динамически загружает и выгружает модели из видеопамяти на основе их приоритета и времени простоя, предотвращая ошибки Out-Of-Memory (OOM). Легкие и частые модели висят в памяти постоянно, а тяжелые LLM загружаются по требованию и выгружаются, если к ним нет запросов. Весь этот процесс скрыт за единым асинхронным OpenAI-совместимым API. 
+[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com/)
 
-**gpudisp** is a dynamic GPU resource dispatcher and API gateway. It enables running multiple heavy machine learning models (Text, Vision, Audio) concurrently on a single consumer-grade GPU (e.g., 16GB VRAM) without encountering Out-Of-Memory (OOM) crashes.  
-It acts as a dynamic swap manager, intelligently loading and unloading models from VRAM based on priority, idle timeouts, and active requests, while exposing a unified, OpenAI-compatible API via LiteLLM.
+> 🇷🇺 **TL;DR на русском:**
+> Проект решает проблему Out-Of-Memory при запуске тяжелого зоопарка моделей (LLM, Vision, Audio) на одной видеокарте 16 ГБ.
+> Ядро системы — кастомный диспетчер памяти (`swap_manager`), который динамически загружает и выгружает модели из VRAM на основе приоритетов и таймаутов простоя. Вся сложная логика маршрутизации и ожидания загрузки весов скрыта за единым OpenAI-совместимым API (через LiteLLM и FastAPI).
 
-## **🧠 Core Logic: VRAM Swap Manager**
+**gpudisp** is a dynamic GPU resource dispatcher that enables running multiple heavy machine learning models (Text, Vision, Audio) concurrently on a single consumer-grade GPU without OOM crashes. 
 
-The heart of the project is the custom swap\_manager. Since a single 16GB GPU cannot hold all models simultaneously, the manager acts as a traffic controller for VRAM:
+It intelligently loads and unloads models from VRAM based on priority, idle timeouts, and active requests, exposing a unified OpenAI-compatible API.
 
-> * **Priority-Based Swapping:**
-> * **High Priority (Pre-warmed):** Lightweight or frequently used models (e.g., jina-clip-v2 for embeddings) are loaded on startup and never unloaded due to idle time.  
->  * **Low Priority (On-Demand):** Heavy models (e.g., Qwen2.5-VL, GigaAM) are loaded when a request arrives. If they remain idle for a configured idle\_timeout\_sec (e.g., 60 seconds), they are automatically unloaded from VRAM.  
-> * **VRAM Guard:** Before spinning up a new model, the manager checks the currently available VRAM against the model's estimated\_vram\_mb. If there isn't enough memory, it forcefully suspends inactive low-priority models to make room.  
-> * **Zero-Downtime Routing:** Client requests wait seamlessly while the requested model is spun up into VRAM, completely abstracting the hardware limitations from the end user.
+## 🧠 Core Logic: VRAM Swap Manager
+Since a single 16GB GPU cannot hold all models simultaneously, the custom `swap_manager` acts as a traffic controller:
+* **High Priority (Pre-warmed):** Lightweight models (e.g., `jina-clip-v2` for image embeddings) are loaded on startup and never unloaded.
+* **Low Priority (On-Demand):** Heavy models (e.g., `Qwen2.5-VL`, `GigaAM`) are loaded upon request and automatically unloaded after a configured `idle_timeout_sec`.
+* **VRAM Guard:** Before starting a new model, the manager checks available VRAM. If insufficient, it forcefully suspends inactive low-priority models to make room.
 
 ## **🏗 Architecture**
 
