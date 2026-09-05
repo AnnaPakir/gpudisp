@@ -1,8 +1,7 @@
 # **GPU Dispatcher (gpudisp) 🚀**
 
 🇷🇺 **Кратко о проекте (RU):**  
-gpudisp — это MLOps-инструмент для оркестрации и запуска зоопарка нейросетей (LLMs, Vision, Audio, Embeddings) на одной потребительской видеокарте (например, 16 ГБ VRAM).  
-**Главная особенонсть — умный диспетчер памяти (Swap Manager).** Он динамически загружает и выгружает модели из видеопамяти на основе их приоритета и времени простоя, предотвращая ошибки Out-Of-Memory (OOM). Легкие и частые модели висят в памяти постоянно, а тяжелые LLM загружаются по требованию и выгружаются, если к ним нет запросов. Весь этот процесс скрыт за единым асинхронным OpenAI-совместимым API. 
+gpudisp — это MLOps-инструмент для оркестрации и запуска зоопарка нейросетей (LLMs, Vision, Audio, Embeddings) на одной потребительской видеокарте (например, 16 ГБ VRAM).**Главная особенонсть — умный диспетчер памяти (Swap Manager).** Он динамически загружает и выгружает модели из видеопамяти на основе их приоритета и времени простоя, предотвращая ошибки Out-Of-Memory (OOM). Легкие и частые модели висят в памяти постоянно, а тяжелые LLM загружаются по требованию и выгружаются, если к ним нет запросов. Весь этот процесс скрыт за единым асинхронным OpenAI-совместимым API. 
 
 **gpudisp** is a dynamic GPU resource dispatcher and API gateway. It enables running multiple heavy machine learning models (Text, Vision, Audio) concurrently on a single consumer-grade GPU (e.g., 16GB VRAM) without encountering Out-Of-Memory (OOM) crashes.  
 It acts as a dynamic swap manager, intelligently loading and unloading models from VRAM based on priority, idle timeouts, and active requests, while exposing a unified, OpenAI-compatible API via LiteLLM.
